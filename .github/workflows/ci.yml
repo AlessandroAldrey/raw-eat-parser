@@ -10,11 +10,16 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  # Job 1: Linting and Code Quality
+  # Job 1: Linting and Code Quality (Protected against CRLF line-ending issues)
   lint:
     name: Lint & Formatting (Windows)
     runs-on: windows-latest
     steps:
+      - name: Configure Git Line Endings
+        run: |
+          git config --global core.autocrlf false
+          git config --global core.eol lf
+
       - name: Checkout source code
         uses: actions/checkout@v4
 
@@ -36,14 +41,20 @@ jobs:
     steps:
       - name: Checkout source code
         uses: actions/checkout@v4
-
+        
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
-        
-      - name: Run Cargo Audit
-        uses: actions-rs/audit-check@v1.2.0
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install cargo-binstall (Direct Binary)
+        run: |
+          curl -L https://github.com/cargo-bins/cargo-binstall/releases/latest/download/cargo-binstall-x86_64-unknown-linux-musl.tgz | tar -xvzf -
+          sudo mv cargo-binstall /usr/local/bin/
+
+      - name: Install cargo-audit via binstall
+        run: cargo binstall --force cargo-audit -y
+
+      - name: Run Audit
+        run: cargo audit
 
   # Job 3: Native Test Execution
   test:
